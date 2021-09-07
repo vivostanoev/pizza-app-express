@@ -3,7 +3,7 @@ const app = express();
 const {foods} = require('./Data/FoodData')
 const cors = require('cors');
 const {MongoClient} = require('mongodb');
-const uri = "mongodb+srv://viliyan:viliyan@viliyan.zql7y.mongodb.net/pizza?retryWrites=true&w=majority";
+const uri = "";
 app.use(cors());
 app.use(express.json());
 app.use(express.static('img'));
