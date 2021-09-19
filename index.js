@@ -7,7 +7,18 @@ const uri = "mongodb+srv://viliyan:viliyan@viliyan.zql7y.mongodb.net/pizza?retry
 app.use(cors());
 app.use(express.json());
 app.use(express.static('img'));
+const multer  = require('multer')
+var ObjectId = require('mongodb').ObjectId;
+var storage = multer.diskStorage({
+  destination: 'img/',
+  filename: function(req, file, callback) {
+    callback(null, file.originalname);
+  }
+});
+var upload = multer({ storage: storage })
+
 let foodItems = [];
+let toppingsItems = [];
 
 async function insertUser(item){
   const client = await MongoClient.connect(uri, { 
@@ -17,6 +28,19 @@ async function insertUser(item){
 
   const db = await client.db('pizza');
   await db.collection('users').insertOne(item); 
+  
+  await client.close();
+}
+
+
+async function addnewToppings(item){
+  const client = await MongoClient.connect(uri, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('toppings').insertOne(item); 
   
   await client.close();
 }
@@ -35,6 +59,45 @@ async function insertOrder(order){
 }
 
 
+async function insertNewPizza(food){
+  const client = await MongoClient.connect(uri, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('foods').insertOne(food); 
+  
+  await client.close();
+}
+
+
+async function deletePizza(food){
+  const client = await MongoClient.connect(uri, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('foods').deleteOne({_id: new ObjectId(food)}); 
+  
+  await client.close();
+}
+
+
+async function updatePizzaPrice(food, number){
+  const client = await MongoClient.connect(uri, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('foods').updateOne({_id: new ObjectId(food)}, { $set: { price: number }},   { upsert: true });
+  
+  await client.close();
+}
+
+
 async function getFoods(){
   const client = await MongoClient.connect(uri, { 
     useNewUrlParser: true, 
@@ -43,6 +106,18 @@ async function getFoods(){
 
   const db = await client.db('pizza');
   foodItems = await db.collection('foods').find({}).toArray();
+
+  await client.close();
+}
+
+async function getToppings(){
+  const client = await MongoClient.connect(uri, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  toppingsItems = await db.collection('toppings').find({}).toArray();
 
   await client.close();
 }
@@ -143,6 +218,29 @@ app.post('/api/post/order', function (req, res){
   }
 });
 
+
+app.post('/api/post/pizza',upload.single('img'), function (req, res){
+    let newFood = {};
+    newFood.name = req.body.name;
+    newFood.section = req.body.section;
+    newFood.price = req.body.price;
+    newFood.img = req.file.originalname;
+
+    insertNewPizza(newFood);
+});
+
+
+app.post('/api/delete/pizza', function (req, res){  
+  console.log(req.body.id)
+  deletePizza(req.body.id);
+});
+
+app.post('/api/update/pizza', function (req, res){  
+  
+  updatePizzaPrice(req.body.id, req.body.price);
+});
+
+
 app.get('/api/get/orders/:user', function (req, res){
   let orders = getOrders(req.params.user);
   
@@ -158,6 +256,11 @@ app.get('/api/get/orders/:user', function (req, res){
 app.get('/api/get/foods', function (req, res){
   getFoods();
   res.json(foods(foodItems)).send(); 
+});
+
+app.get('/api/get/toppings', function (req, res){
+  getToppings();
+  res.json(toppingsItems).send(); 
 });
 
 function transferOrders(orders){
