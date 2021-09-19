@@ -4,6 +4,7 @@ const {foods} = require('./Data/FoodData')
 const cors = require('cors');
 const {MongoClient} = require('mongodb');
 const uri = "mongodb+srv://viliyan:viliyan@viliyan.zql7y.mongodb.net/pizza?retryWrites=true&w=majority";
+const uri1 = "mongodb+srv://adminUser1:adminUser1@viliyan.zql7y.mongodb.net/pizza?retryWrites=true&w=majority";
 app.use(cors());
 app.use(express.json());
 app.use(express.static('img'));
@@ -32,9 +33,21 @@ async function insertUser(item){
   await client.close();
 }
 
+async function insertUserAdmin(item){
+  const client = await MongoClient.connect(uri1, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('adminuser').insertOne(item); 
+  
+  await client.close();
+}
+
 
 async function addnewToppings(item){
-  const client = await MongoClient.connect(uri, { 
+  const client = await MongoClient.connect(uri1, { 
     useNewUrlParser: true, 
     useUnifiedTopology: true,
 });
@@ -60,7 +73,7 @@ async function insertOrder(order){
 
 
 async function insertNewPizza(food){
-  const client = await MongoClient.connect(uri, { 
+  const client = await MongoClient.connect(uri1, { 
     useNewUrlParser: true, 
     useUnifiedTopology: true,
 });
@@ -72,8 +85,21 @@ async function insertNewPizza(food){
 }
 
 
+async function insertTopping(toppingName){
+  const client = await MongoClient.connect(uri1, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('toppings').insertOne(toppingName); 
+  
+  await client.close();
+}
+
+
 async function deletePizza(food){
-  const client = await MongoClient.connect(uri, { 
+  const client = await MongoClient.connect(uri1, { 
     useNewUrlParser: true, 
     useUnifiedTopology: true,
 });
@@ -85,8 +111,21 @@ async function deletePizza(food){
 }
 
 
+async function deleteToppings(food){
+  const client = await MongoClient.connect(uri1, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('toppings').deleteOne({_id: new ObjectId(food)}); 
+  
+  await client.close();
+}
+
+
 async function updatePizzaPrice(food, number){
-  const client = await MongoClient.connect(uri, { 
+  const client = await MongoClient.connect(uri1, { 
     useNewUrlParser: true, 
     useUnifiedTopology: true,
 });
@@ -122,6 +161,20 @@ async function getToppings(){
   await client.close();
 }
 
+async function getToppingName(name){
+  const client = await MongoClient.connect(uri, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  let topping = await db.collection('toppings').find({"name": name}).toArray();
+
+  await client.close();
+
+  return topping;
+}
+
 async function getUser(item){
   const client = await MongoClient.connect(uri, { 
     useNewUrlParser: true, 
@@ -130,6 +183,20 @@ async function getUser(item){
 
   const db = await client.db('pizza');
   let users = await db.collection('users').find({"username": item.username}).toArray();
+  await client.close();
+
+  return users;
+}
+
+
+async function getAdminUser(item){
+  const client = await MongoClient.connect(uri1, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  let users = await db.collection('adminuser').find({"username": item.username}).toArray();
   await client.close();
 
   return users;
@@ -154,6 +221,38 @@ app.get('/', function (req, res) {
     res.send("Hello world");
 });
 
+
+app.post('/api/authAdmin', function (req, res){
+  if(!req.body.username || !req.body.password){
+    res.status(400).json({message:'Pleae fill all usercredantials'});
+  }
+  else{
+
+  let users = getAdminUser(req.body);
+  
+  let isUserExist = false;
+
+  users.then(function(result){
+      for (let index = 0; index < result.length; index++) {
+        const element = result[index];
+        if(element.password === req.body.password)
+        {
+           isUserExist = true;
+        }
+      }
+
+      if(isUserExist)
+      {
+        res.status(200).json({status: 200, message: "Successfull"});
+      }
+      else{
+       res.status(404).json({status: 1, message: "Wrong email address or password"});
+      }
+  });
+  }
+});
+
+
 app.post('/api/auth', function (req, res){
     if(!req.body.username || !req.body.password){
       res.status(400).json({message:'Pleae fill all usercredantials'});
@@ -170,7 +269,6 @@ app.post('/api/auth', function (req, res){
           if(element.password === req.body.password)
           {
              isUserExist = true;
-             console.log("here" + isUserExist);
           }
         }
 
@@ -207,6 +305,58 @@ app.post('/api/post/user', function (req, res){
   }
 });
 
+app.post('/api/auth', function (req, res){
+  if(!req.body.username || !req.body.password){
+    res.status(400).json({message:'Pleae fill all usercredantials'});
+  }
+  else{
+
+  let users = getUser(req.body);
+  
+  let isUserExist = false;
+
+  users.then(function(result){
+      for (let index = 0; index < result.length; index++) {
+        const element = result[index];
+        if(element.password === req.body.password)
+        {
+           isUserExist = true;
+        }
+      }
+
+      if(isUserExist)
+      {
+        res.status(200).json({status: 200, message: "Successfull"});
+      }
+      else{
+       res.status(404).json({status: 1, message: "Wrong email address or password"});
+      }
+  });
+  }
+});
+
+app.post('/api/post/adminuser', function (req, res){
+if(!req.body.username || !req.body.password){
+   res.status(400).json({message:"Please fill all necessary fields"}); 
+   return;
+}
+else{
+let users = getAdminUser(req.body);
+
+users.then(function(result){
+  if(result.length === 0)
+  { 
+    insertUserAdmin(req.body);
+    res.status(200).json({message:"Successful register"});
+  }
+  else
+  {
+    res.status(401).json({message:"Email address already exist"});
+  }
+});
+}
+});
+
 app.post('/api/post/order', function (req, res){
   if(req.body.length===0)
   {
@@ -231,8 +381,15 @@ app.post('/api/post/pizza',upload.single('img'), function (req, res){
 
 
 app.post('/api/delete/pizza', function (req, res){  
-  console.log(req.body.id)
   deletePizza(req.body.id);
+});
+
+app.post('/api/delete/toppings', function (req, res){  
+  console.log(req.body);
+
+  req.body.forEach(element => {
+      deleteToppings(element._id);
+  });
 });
 
 app.post('/api/update/pizza', function (req, res){  
@@ -262,6 +419,25 @@ app.get('/api/get/toppings', function (req, res){
   getToppings();
   res.json(toppingsItems).send(); 
 });
+
+app.post('/api/post/topping', function (req, res){
+  console.log(req.body.topping);
+  let toppings = getToppingName(req.body.topping);
+
+  toppings.then(function(result){
+    if(result.length === 0)
+    { 
+      let data = {"name": req.body.topping};
+      insertTopping(data);
+      res.status(200).json({message:"Successful register"});
+    }
+    else
+    {
+      res.status(401).json({message:"Topping already exist"});
+    }
+  });
+});
+
 
 function transferOrders(orders){
 orders.date = new Date().toLocaleString();
