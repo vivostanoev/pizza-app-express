@@ -20,6 +20,7 @@ var upload = multer({ storage: storage })
 
 let foodItems = [];
 let toppingsItems = [];
+let ordersAll = [];
 
 async function insertUser(item){
   const client = await MongoClient.connect(uri, { 
@@ -41,19 +42,6 @@ async function insertUserAdmin(item){
 
   const db = await client.db('pizza');
   await db.collection('adminuser').insertOne(item); 
-  
-  await client.close();
-}
-
-
-async function addnewToppings(item){
-  const client = await MongoClient.connect(uri1, { 
-    useNewUrlParser: true, 
-    useUnifiedTopology: true,
-});
-
-  const db = await client.db('pizza');
-  await db.collection('toppings').insertOne(item); 
   
   await client.close();
 }
@@ -137,6 +125,19 @@ async function updatePizzaPrice(food, number){
 }
 
 
+async function updateOrderStatus(orderId, orderStatus){
+  const client = await MongoClient.connect(uri1, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  await db.collection('orders').updateOne({_id: new ObjectId(orderId)}, { $set: { status: orderStatus }},   { upsert: true });
+  
+  await client.close();
+}
+
+
 async function getFoods(){
   const client = await MongoClient.connect(uri, { 
     useNewUrlParser: true, 
@@ -148,6 +149,20 @@ async function getFoods(){
 
   await client.close();
 }
+
+
+async function getAllOrders(){
+  const client = await MongoClient.connect(uri, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+});
+
+  const db = await client.db('pizza');
+  ordersAll = await db.collection('orders').find({}).toArray();
+
+  await client.close();
+}
+
 
 async function getToppings(){
   const client = await MongoClient.connect(uri, { 
@@ -398,6 +413,12 @@ app.post('/api/update/pizza', function (req, res){
 });
 
 
+app.post('/api/update/order/status', function (req, res){  
+  
+  updateOrderStatus(req.body.id, req.body.price);
+});
+
+
 app.get('/api/get/orders/:user', function (req, res){
   let orders = getOrders(req.params.user);
   
@@ -413,6 +434,11 @@ app.get('/api/get/orders/:user', function (req, res){
 app.get('/api/get/foods', function (req, res){
   getFoods();
   res.json(foods(foodItems)).send(); 
+});
+
+app.get('/api/get/orders', function (req, res){
+  getAllOrders();
+  res.json(ordersAll).send(); 
 });
 
 app.get('/api/get/toppings', function (req, res){
@@ -441,7 +467,7 @@ app.post('/api/post/topping', function (req, res){
 
 function transferOrders(orders){
 orders.date = new Date().toLocaleString();
-orders.status = "Draft";
+orders.status = "Cooking";
 
 insertOrder(orders);
 }
